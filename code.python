@@ -34,7 +34,7 @@ class StockDataFetcher:
             
             # Check if we got valid data
             if 'Time Series (Daily)' not in data:
-                print(f"❌ No time series data found for {symbol}")
+                print(f" No time series data found for {symbol}")
                 print(f"API Response: {data}")
                 return None
             
