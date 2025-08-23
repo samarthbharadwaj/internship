@@ -1,0 +1,17 @@
+dockerized-stock-pipeline/
+├── airflow_pipeline/
+│   ├── dags/
+│   ├── scripts/
+│   ├── docker-compose.yml
+│   ├── .env              # DO NOT COMMIT
+│   └── README.md
+├── dagster_pipeline/
+│   ├── pipelines/
+│   ├── scripts/
+│   ├── docker-compose.yml
+│   ├── .env              # DO NOT COMMIT
+│   └── README.md
+├── compare.md            # optional
+└── screenshots/
+    ├── airflow_ui_mock.png
+    └── dagster_ui_mock.png
