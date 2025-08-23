@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-init_database.py
-Initializes the PostgreSQL database schema for the stock data pipeline.
-Run this after the PostgreSQL container is up and healthy.
-"""
+
 
 import os
 import psycopg2
@@ -46,13 +42,14 @@ def init_db():
         # Create the stock_data table
         print("Creating stock_data table if not exists...")
         cur.execute(TABLE_SCHEMA)
-        print("✅ Database initialized successfully.")
+        print(" Database initialized successfully.")
 
         cur.close()
         conn.close()
 
     except Exception as e:
-        print("❌ Failed to initialize database:", e)
+        print(" Failed to initialize database:", e)
 
 if __name__ == "__main__":
     init_db()
+
