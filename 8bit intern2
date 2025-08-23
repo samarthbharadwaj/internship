@@ -72,7 +72,7 @@ success_log_task = BashOperator(
 def failure_callback(context):
     error = context['exception']
     task_instance = context['task_instance']
-    print(f"❌ Task {task_instance.task_id} failed with error: {error}")
+    print(f" Task {task_instance.task_id} failed with error: {error}")
 
 # Set up task dependencies
 init_database_task >> fetch_stock_data_task >> validate_data_task >> success_log_task
