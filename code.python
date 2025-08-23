@@ -1,0 +1,137 @@
+import requests
+import psycopg2
+import os
+from datetime import datetime, timedelta
+import time
+
+class StockDataFetcher:
+    def __init__(self):
+        self.api_key = os.getenv('ALPHA_VANTAGE_API_KEY', 'demo')
+        self.base_url = "https://www.alphavantage.co/query"
+        
+        # Database connection parameters
+        self.db_config = {
+            'host': os.getenv('POSTGRES_HOST', 'postgres'),
+            'database': os.getenv('POSTGRES_DB', 'airflow'),
+            'user': os.getenv('POSTGRES_USER', 'airflow'),
+            'password': os.getenv('POSTGRES_PASSWORD', 'airflow'),
+            'port': os.getenv('POSTGRES_PORT', '5432')
+        }
+    
+    def fetch_stock_data(self, symbol):
+        """Fetch stock data from Alpha Vantage API"""
+        try:
+            params = {
+                'function': 'TIME_SERIES_DAILY',
+                'symbol': symbol,
+                'apikey': self.api_key,
+                'outputsize': 'compact'
+            }
+            
+            response = requests.get(self.base_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Check if we got valid data
+            if 'Time Series (Daily)' not in data:
+                print(f"❌ No time series data found for {symbol}")
+                print(f"API Response: {data}")
+                return None
+            
+            time_series = data['Time Series (Daily)']
+            latest_date = sorted(time_series.keys())[-1]  # Get latest available date
+            daily_data = time_series[latest_date]
+            
+            stock_data = {
+                'symbol': symbol,
+                'open_price': float(daily_data['1. open']),
+                'high_price': float(daily_data['2. high']),
+                'low_price': float(daily_data['3. low']),
+                'close_price': float(daily_data['4. close']),
+                'volume': int(daily_data['5. volume']),
+                'timestamp': datetime.strptime(latest_date, '%Y-%m-%d')
+            }
+            
+            print(f"✅ Successfully fetched data for {symbol} on {latest_date}")
+            return stock_data
+            
+        except requests.exceptions.RequestException as e:
+            print(f"❌ API request failed for {symbol}: {e}")
+            return None
+        except KeyError as e:
+            print(f"❌ Data parsing error for {symbol}: {e}")
+            return None
+        except Exception as e:
+            print(f"❌ Unexpected error fetching {symbol}: {e}")
+            return None
+    
+    def save_to_database(self, stock_data):
+        """Save stock data to PostgreSQL database"""
+        try:
+            conn = psycopg2.connect(**self.db_config)
+            cur = conn.cursor()
+            
+            insert_query = """
+            INSERT INTO stock_data (symbol, open_price, high_price, low_price, close_price, volume, timestamp)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (symbol, timestamp) DO UPDATE SET
+                open_price = EXCLUDED.open_price,
+                high_price = EXCLUDED.high_price,
+                low_price = EXCLUDED.low_price,
+                close_price = EXCLUDED.close_price,
+                volume = EXCLUDED.volume
+            """
+            
+            cur.execute(insert_query, (
+                stock_data['symbol'],
+                stock_data['open_price'],
+                stock_data['high_price'],
+                stock_data['low_price'],
+                stock_data['close_price'],
+                stock_data['volume'],
+                stock_data['timestamp']
+            ))
+            
+            conn.commit()
+            print(f"✅ Successfully saved {stock_data['symbol']} data to database")
+            
+            cur.close()
+            conn.close()
+            
+        except Exception as e:
+            print(f"❌ Database error: {e}")
+            raise
+    
+    def fetch_and_save_multiple_stocks(self, symbols):
+        """Fetch and save data for multiple stock symbols"""
+        results = []
+        
+        for symbol in symbols:
+            stock_data = self.fetch_stock_data(symbol)
+            if stock_data:
+                self.save_to_database(stock_data)
+                results.append(stock_data)
+                time.sleep(12)  # Respect API rate limits (5 requests per minute)
+        
+        return results
+
+def main():
+    """Main function to fetch and save stock data"""
+    # List of stock symbols to track
+    stock_symbols = ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'TSLA']
+    
+    fetcher = StockDataFetcher()
+    
+    print("🚀 Starting stock data fetching process...")
+    print(f"📊 Tracking symbols: {', '.join(stock_symbols)}")
+    
+    try:
+        results = fetcher.fetch_and_save_multiple_stocks(stock_symbols)
+        print(f"✅ Process completed. Fetched data for {len(results)} stocks")
+        
+    except Exception as e:
+        print(f"❌ Process failed: {e}")
+        raise
+
+if __name__ == "__main__":
+    main()
