@@ -1,0 +1,93 @@
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+from airflow.operators.bash_operator import BashOperator
+from airflow.operators.postgres_operator import PostgresOperator
+from datetime import datetime, timedelta
+import sys
+import os
+
+# Add scripts directory to Python path
+sys.path.insert(0, '/opt/airflow/scripts')
+
+from fetch_stock_data import main as fetch_stock_data_main
+from init_database import create_stock_table
+
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2024, 1, 1),
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 3,
+    'retry_delay': timedelta(minutes=5),
+    'execution_timeout': timedelta(minutes=30),
+}
+
+dag = DAG(
+    'stock_data_pipeline',
+    default_args=default_args,
+    description='DAG for fetching and storing stock market data',
+    schedule_interval='0 20 * * 1-5',  # Run at 8 PM UTC on weekdays (after market close)
+    catchup=False,
+    tags=['stocks', 'data', 'etl'],
+)
+
+# Task 1: Initialize database
+init_database_task = PythonOperator(
+    task_id='initialize_database',
+    python_callable=create_stock_table,
+    dag=dag,
+)
+
+# Task 2: Fetch and store stock data
+fetch_stock_data_task = PythonOperator(
+    task_id='fetch_and_store_stock_data',
+    python_callable=fetch_stock_data_main,
+    dag=dag,
+)
+
+# Task 3: Data validation (check if data was inserted)
+validate_data_task = PostgresOperator(
+    task_id='validate_data_insertion',
+    sql="""
+    SELECT 
+        COUNT(*) as total_records,
+        COUNT(DISTINCT symbol) as unique_symbols,
+        MAX(timestamp) as latest_date
+    FROM stock_data
+    WHERE timestamp >= CURRENT_DATE - INTERVAL '1 day'
+    """,
+    postgres_conn_id='postgres_default',
+    dag=dag,
+)
+
+# Task 4: Log success
+success_log_task = BashOperator(
+    task_id='log_success',
+    bash_command='echo "Stock data pipeline completed successfully at $(date)"',
+    dag=dag,
+)
+
+# Task 5: Log failure (on failure callback)
+def failure_callback(context):
+    error = context['exception']
+    task_instance = context['task_instance']
+    print(f"❌ Task {task_instance.task_id} failed with error: {error}")
+
+# Set up task dependencies
+init_database_task >> fetch_stock_data_task >> validate_data_task >> success_log_task
+
+# Set failure callback for all tasks
+for task in dag.tasks:
+    task.on_failure_callback = failure_callback
+
+# Optional: Add task to clean old data (older than 90 days)
+clean_old_data_task = PostgresOperator(
+    task_id='clean_old_data',
+    sql="DELETE FROM stock_data WHERE timestamp < CURRENT_DATE - INTERVAL '90 days'",
+    postgres_conn_id='postgres_default',
+    dag=dag,
+)
+
+# Add cleaning task to run after validation
+validate_data_task >> clean_old_data_task >> success_log_task
