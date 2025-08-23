@@ -1,0 +1,5 @@
+# Connect to PostgreSQL
+docker-compose exec postgres psql -U airflow -d airflow
+
+# Query stock data
+SELECT * FROM stock_data ORDER BY timestamp DESC LIMIT 10;
