@@ -1,0 +1,57 @@
+import psycopg2
+import os
+from datetime import datetime
+
+def create_stock_table():
+    """Create the stock data table in PostgreSQL"""
+    try:
+        # Get database connection parameters from environment variables
+        db_host = os.getenv('POSTGRES_HOST', 'postgres')
+        db_name = os.getenv('POSTGRES_DB', 'airflow')
+        db_user = os.getenv('POSTGRES_USER', 'airflow')
+        db_password = os.getenv('POSTGRES_PASSWORD', 'airflow')
+        db_port = os.getenv('POSTGRES_PORT', '5432')
+        
+        # Connect to PostgreSQL
+        conn = psycopg2.connect(
+            host=db_host,
+            database=db_name,
+            user=db_user,
+            password=db_password,
+            port=db_port
+        )
+        
+        # Create cursor
+        cur = conn.cursor()
+        
+        # Create stock_data table if it doesn't exist
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS stock_data (
+            id SERIAL PRIMARY KEY,
+            symbol VARCHAR(10) NOT NULL,
+            open_price DECIMAL(10, 4),
+            high_price DECIMAL(10, 4),
+            low_price DECIMAL(10, 4),
+            close_price DECIMAL(10, 4),
+            volume BIGINT,
+            timestamp TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(symbol, timestamp)
+        );
+        """
+        
+        cur.execute(create_table_query)
+        conn.commit()
+        
+        print("✅ Stock data table created successfully")
+        
+        # Close connection
+        cur.close()
+        conn.close()
+        
+    except Exception as e:
+        print(f"❌ Error creating stock table: {e}")
+        raise
+
+if __name__ == "__main__":
+    create_stock_table()
