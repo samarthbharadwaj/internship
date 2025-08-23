@@ -43,14 +43,14 @@ def create_stock_table():
         cur.execute(create_table_query)
         conn.commit()
         
-        print("✅ Stock data table created successfully")
+        print("t Stock data table created successfully")
         
         # Close connection
         cur.close()
         conn.close()
         
     except Exception as e:
-        print(f"❌ Error creating stock table: {e}")
+        print(f" Error creating stock table: {e}")
         raise
 
 if __name__ == "__main__":
