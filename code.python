@@ -52,17 +52,17 @@ class StockDataFetcher:
                 'timestamp': datetime.strptime(latest_date, '%Y-%m-%d')
             }
             
-            print(f"✅ Successfully fetched data for {symbol} on {latest_date}")
+            print(f" Successfully fetched data for {symbol} on {latest_date}")
             return stock_data
             
         except requests.exceptions.RequestException as e:
-            print(f"❌ API request failed for {symbol}: {e}")
+            print(f" API request failed for {symbol}: {e}")
             return None
         except KeyError as e:
-            print(f"❌ Data parsing error for {symbol}: {e}")
+            print(f" Data parsing error for {symbol}: {e}")
             return None
         except Exception as e:
-            print(f"❌ Unexpected error fetching {symbol}: {e}")
+            print(f" Unexpected error fetching {symbol}: {e}")
             return None
     
     def save_to_database(self, stock_data):
@@ -93,13 +93,13 @@ class StockDataFetcher:
             ))
             
             conn.commit()
-            print(f"✅ Successfully saved {stock_data['symbol']} data to database")
+            print(f" Successfully saved {stock_data['symbol']} data to database")
             
             cur.close()
             conn.close()
             
         except Exception as e:
-            print(f"❌ Database error: {e}")
+            print(f" Database error: {e}")
             raise
     
     def fetch_and_save_multiple_stocks(self, symbols):
@@ -122,15 +122,15 @@ def main():
     
     fetcher = StockDataFetcher()
     
-    print("🚀 Starting stock data fetching process...")
-    print(f"📊 Tracking symbols: {', '.join(stock_symbols)}")
+    print(" Starting stock data fetching process...")
+    print(f" Tracking symbols: {', '.join(stock_symbols)}")
     
     try:
         results = fetcher.fetch_and_save_multiple_stocks(stock_symbols)
-        print(f"✅ Process completed. Fetched data for {len(results)} stocks")
+        print(f" Process completed. Fetched data for {len(results)} stocks")
         
     except Exception as e:
-        print(f"❌ Process failed: {e}")
+        print(f" Process failed: {e}")
         raise
 
 if __name__ == "__main__":
