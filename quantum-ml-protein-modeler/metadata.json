@@ -1,0 +1,6 @@
+{
+  "name": "Quantum ML Protein Modeler",
+  "description": "A scientific modeler utilizing Quantum Machine Learning (QML) and Gemini reasoning to predict amino acid folding, structure energies, and optimize codons.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
